@@ -41,7 +41,7 @@ apiRoutes.get('/getDiscList', function (req, res) {
 })
 
 apiRoutes.get('/lyric', function (req, res) {
-  var url = 'https://c.y.qq.com/lyric/fcgi-bin/fcg_query_lyric.fcg'
+  var url = 'https://c.y.qq.com/lyric/fcgi-bin/fcg_query_lyric_yqq.fcg'
 
   axios.get(url, {
     headers: {
