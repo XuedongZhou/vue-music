@@ -1,0 +1,12 @@
+{
+  "ExpandedNodes": [
+    "",
+    "\\src",
+    "\\src\\common",
+    "\\src\\common\\js",
+    "\\src\\components",
+    "\\src\\components\\player"
+  ],
+  "SelectedNode": "\\src\\components\\player\\player.vue",
+  "PreviewInSolutionExplorer": false
+}
