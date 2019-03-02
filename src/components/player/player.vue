@@ -231,13 +231,18 @@
         if (!this.songReady) {
           return
         }
-        let index = this.currentIndex - 1
-        if (index === -1) {
-          index = this.playList.length - 1
-        }
-        this.setCurrentIndex(index)
-        if (!this.playing) {
-          this.togglePlaying()
+        if (this.playlist.length === 1) {
+          this.loop()
+          return
+        } else {
+          let index = this.currentIndex - 1
+          if (index === -1) {
+            index = this.playList.length - 1
+          }
+          this.setCurrentIndex(index)
+          if (!this.playing) {
+            this.togglePlaying()
+          }
         }
         this.songReady = false
       },
@@ -258,17 +263,28 @@
         return `${minute}:${second}`
       },
       onProgressBarChange(percent) {
-        this.$refs.audio.currentTime = this.currentSong.duration * percent
+        const currentTime = this.currentSong.duration * percent
+        this.$refs.audio.currentTime = currentTime
         if (!this.playing) {
           this.togglePlaying()
+        }
+        if (this.currentLyric) {
+          this.currentLyric.seek(currentTime * 1000)
         }
       },
       getLyric() {
         this.currentSong.getLyric().then((lyric) => {
+          if (this.currentSong.lyric !== lyric) {
+            return
+          }
           this.currentLyric = new Lyric(lyric, this.handleLyric)
           if (this.playing) {
             this.currentLyric.play()
           }
+        }).catch(() => {
+          this.currentLyric = null
+          this.playingLyric = ''
+          this.currentLineNum = 0
         })
       },
       handleLyric({lineNum, txt}) {
@@ -279,12 +295,15 @@
         } else {
           this.$refs.lyricList.scrollTo(0, 1000)
         }
+        this.playingLyric = txt
       },
       showPlaylist() {
         this.$refs.playlist.show()
       },
       middleTouchStart(e) {
         this.touch.initiated = true
+        // 用来判断是否是一次移动
+        this.touch.moved = false
         const touch = e.touches[0]
         this.touch.startX = touch.pageX
         this.touch.startY = touch.pageY
@@ -299,6 +318,9 @@
         if (Math.abs(deltaY) > Math.abs(deltaX)) {
           return
         }
+        if (!this.touch.moved) {
+          this.touch.moved = true
+        }
         const left = this.currentShow === 'cd' ? 0 : -window.innerWidth
         const offsetWidth = Math.min(0, Math.max(-window.innerWidth, left + deltaX))
         this.touch.percent = Math.abs(offsetWidth / window.innerWidth)
@@ -308,6 +330,9 @@
         this.$refs.middleL.style[transitionDuration] = 0
       },
       middleTouchEnd(e) {
+        if (!this.touch.moved) {
+          return
+        }
         let offsetWidth
         let opacity
         if (this.currentShow === 'cd') {
@@ -375,17 +400,28 @@
         }
         if (this.currentLyric) {
           this.currentLyric.stop()
+          this.currentTime = 0
+          this.playingLyric = ''
+          this.currentLineNum = 0
         }
-        this.$nextTick(() => {
+        clearTimeout(this.timer)
+        this.timer = setTimeout(() => {
           this.$refs.audio.play()
           this.getLyric()
-        })
+        }, 1000)
       },
       playing(newPlaying) {
         const audio = this.$refs.audio
         this.$nextTick(() => {
           newPlaying ? audio.play() : audio.pause()
         })
+      },
+      fullScreen(newVal) {
+        if (newVal) {
+          setTimeout(() => {
+            this.$refs.lyricList.refresh()
+          }, 20)
+        }
       }
     },
     components: {
