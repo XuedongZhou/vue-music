@@ -1,21 +1,26 @@
 <template>
-  <div class="player" v-show="playList.length">
-    <transition name="normal" @enter="enter" @after-enter="afterEnter" @leave="leave" @after-leave="afterLeave">
+  <div class="player" v-show="playList.length>0">
+    <transition name="normal"
+                @enter="enter"
+                @after-enter="afterEnter"
+                @leave="leave"
+                @after-leave="afterLeave"
+    >
       <div class="normal-player" v-show="fullScreen">
         <div class="background">
           <img width="100%" height="100%" :src="currentSong.image">
         </div>
         <div class="top">
-          <div class="back" @click="back()">
+          <div class="back" @click="back">
             <i class="icon-back"></i>
           </div>
           <h1 class="title" v-html="currentSong.name"></h1>
           <h2 class="subtitle" v-html="currentSong.singer"></h2>
         </div>
         <div class="middle"
-          @touchstart.prevent="middleTouchStart"
-          @touchmove.prevent="middleTouchMove"
-          @touchend="middleTouchEnd"
+             @touchstart.prevent="middleTouchStart"
+             @touchmove.prevent="middleTouchMove"
+             @touchend="middleTouchEnd"
         >
           <div class="middle-l" ref="middleL">
             <div class="cd-wrapper" ref="cdWrapper">
@@ -23,21 +28,26 @@
                 <img class="image" :src="currentSong.image">
               </div>
             </div>
+            <div class="playing-lyric-wrapper">
+              <div class="playing-lyric">{{playingLyric}}</div>
+            </div>
           </div>
-          <scroll :data="currentLyric && currentLyric.lines" class="middle-r" ref="lyricList">
+          <scroll class="middle-r" ref="lyricList" :data="currentLyric && currentLyric.lines">
             <div class="lyric-wrapper">
               <div v-if="currentLyric">
-                <p ref="lyricLine" class="text" v-for="(line,index) in currentLyric.lines" :key="index" :class="{'current': currentLineNum===index}">
-                  {{line.txt}}
-                </p>
+                <p ref="lyricLine"
+                   class="text"
+                   :class="{'current': currentLineNum ===index}"
+                   v-for="(line,index) in currentLyric.lines"
+                   :key="index">{{line.txt}}</p>
               </div>
             </div>
           </scroll>
         </div>
         <div class="bottom">
           <div class="dot-wrapper">
-            <span class="dot" :class="{'active': currentShow==='cd'}"></span>
-            <span class="dot" :class="{'active': currentShow==='lyric'}"></span>
+            <span class="dot" :class="{'active':currentShow==='cd'}"></span>
+            <span class="dot" :class="{'active':currentShow==='lyric'}"></span>
           </div>
           <div class="progress-wrapper">
             <span class="time time-l">{{format(currentTime)}}</span>
@@ -54,13 +64,13 @@
               <i @click="prev" class="icon-prev"></i>
             </div>
             <div class="icon i-center" :class="disableCls">
-              <i :class="playIcon" @click="togglePlaying"></i>
+              <i @click="togglePlaying" :class="playIcon"></i>
             </div>
             <div class="icon i-right" :class="disableCls">
               <i @click="next" class="icon-next"></i>
             </div>
             <div class="icon i-right">
-              <i class="icon" :class="getFavoriteIcon(currentSong)" @click="toggleFavorite(currentSong)"></i>
+              <i @click="toggleFavorite(currentSong)" class="icon" :class="getFavoriteIcon(currentSong)"></i>
             </div>
           </div>
         </div>
@@ -86,7 +96,8 @@
       </div>
     </transition>
     <playlist ref="playlist"></playlist>
-    <audio ref="audio" :src="currentSong.url" @canplay="ready" @error="error" @timeupdate="updateTime" @ended="end"></audio>
+    <audio ref="audio" :src="currentSong.url" @play="ready" @error="error" @timeupdate="updateTime"
+           @ended="end"></audio>
   </div>
 </template>
 
@@ -97,11 +108,10 @@
   import ProgressBar from 'base/progress-bar/progress-bar'
   import ProgressCircle from 'base/progress-circle/progress-circle'
   import {playMode} from 'common/js/config'
-
   import Lyric from 'lyric-parser'
   import Scroll from 'base/scroll/scroll'
-  import Playlist from 'components/playlist/playlist'
   import {playerMixin} from 'common/js/mixin'
+  import Playlist from 'components/playlist/playlist'
 
   const transform = prefixStyle('transform')
   const transitionDuration = prefixStyle('transitionDuration')
@@ -115,7 +125,8 @@
         radius: 32,
         currentLyric: null,
         currentLineNum: 0,
-        currentShow: 'cd'
+        currentShow: 'cd',
+        playingLyric: ''
       }
     },
     computed: {
@@ -135,9 +146,9 @@
         return this.currentTime / this.currentSong.duration
       },
       ...mapGetters([
+        'currentIndex',
         'fullScreen',
-        'playing',
-        'currentIndex'
+        'playing'
       ])
     },
     created() {
@@ -209,21 +220,27 @@
       loop() {
         this.$refs.audio.currentTime = 0
         this.$refs.audio.play()
+        this.setPlayingState(true)
         if (this.currentLyric) {
-          this.currentLyric.seek()
+          this.currentLyric.seek(0)
         }
       },
       next() {
         if (!this.songReady) {
           return
         }
-        let index = this.currentIndex + 1
-        if (index === this.playList.length) {
-          index = 0
-        }
-        this.setCurrentIndex(index)
-        if (!this.playing) {
-          this.togglePlaying()
+        if (this.playList.length === 1) {
+          this.loop()
+          return
+        } else {
+          let index = this.currentIndex + 1
+          if (index === this.playList.length) {
+            index = 0
+          }
+          this.setCurrentIndex(index)
+          if (!this.playing) {
+            this.togglePlaying()
+          }
         }
         this.songReady = false
       },
@@ -231,7 +248,7 @@
         if (!this.songReady) {
           return
         }
-        if (this.playlist.length === 1) {
+        if (this.playList.length === 1) {
           this.loop()
           return
         } else {
@@ -293,7 +310,7 @@
           let lineEl = this.$refs.lyricLine[lineNum - 5]
           this.$refs.lyricList.scrollToElement(lineEl, 1000)
         } else {
-          this.$refs.lyricList.scrollTo(0, 1000)
+          this.$refs.lyricList.scrollTo(0, 0, 1000)
         }
         this.playingLyric = txt
       },
@@ -329,7 +346,7 @@
         this.$refs.middleL.style.opacity = 1 - this.touch.percent
         this.$refs.middleL.style[transitionDuration] = 0
       },
-      middleTouchEnd(e) {
+      middleTouchEnd() {
         if (!this.touch.moved) {
           return
         }
@@ -359,6 +376,7 @@
         this.$refs.lyricList.$el.style[transitionDuration] = `${time}ms`
         this.$refs.middleL.style.opacity = opacity
         this.$refs.middleL.style[transitionDuration] = `${time}ms`
+        this.touch.initiated = false
       },
       _pad(num, n = 2) {
         let len = num.toString().length
